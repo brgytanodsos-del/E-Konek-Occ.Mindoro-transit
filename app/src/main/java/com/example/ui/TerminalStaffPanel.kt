@@ -18,19 +18,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
 import com.example.ui.theme.Navy
 import com.example.ui.theme.Orange
 import com.example.viewmodel.AppViewModel
 
+import com.example.viewmodel.AuthViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
-    val trips by viewModel.trips.collectAsState()
-    val bookings by viewModel.bookings.collectAsState()
-    val mamburaoWeather by viewModel.mamburaoWeather.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
-    val gpsIndices by viewModel.gpsIndices.collectAsState()
+fun TerminalStaffPanel(
+    appViewModel: AppViewModel,
+    authViewModel: AuthViewModel = viewModel(),
+    isSuperAdmin: Boolean = false
+) {
+    val trips by appViewModel.trips.collectAsState()
+    val bookings by appViewModel.bookings.collectAsState()
+    val mamburaoWeather by appViewModel.mamburaoWeather.collectAsState()
+    val isOnline by appViewModel.isOnline.collectAsState()
+    val gpsIndices by appViewModel.gpsIndices.collectAsState()
     
     var selectedTab by remember { mutableStateOf(0) }
     var showScanner by remember { mutableStateOf(false) }
@@ -89,7 +96,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         }
                         if (!isSuperAdmin) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { viewModel.logout() }) {
+                            IconButton(onClick = { authViewModel.logout() }) {
                                 Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                             }
                         }
@@ -119,11 +126,11 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Box(modifier = Modifier.weight(1.3f)) {
                                         WeatherWidget(mamburaoWeather, "Mamburao Term.", isOnline, onSpeak = {
-                                            mamburaoWeather?.let { 
-                                                val (_, label) = getWeatherLabel(it.weatherCode)
-                                                viewModel.speak("Ang panahon sa Mamburao Terminal ay $label. Ang temperatura ay ${it.temperature.toInt()} degrees Celsius.")
-                                            }
-                                        })
+                                        mamburaoWeather?.let { 
+                                            val (_, label) = getWeatherLabel(it.weatherCode)
+                                            appViewModel.speak("Ang panahon sa Mamburao Terminal ay $label. Ang temperatura ay ${it.temperature.toInt()} degrees Celsius.")
+                                        }
+                                    })
                                     }
                                     Card(
                                         modifier = Modifier.weight(1f).height(110.dp),
@@ -144,7 +151,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
 
                             items(trips) { trip ->
                                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                    TripCard(trip, onStatusChange = { viewModel.updateTripStatus(trip, it) })
+                                    TripCard(trip, onStatusChange = { appViewModel.updateTripStatus(trip, it) })
                                 }
                             }
                         }
@@ -170,7 +177,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 item { Text("PENDING", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = Orange) }
                 items(pending) { booking ->
                     Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Terminal Admin") }, onCancel = { viewModel.cancelBooking(booking) })
+                        BookingRow(booking, onConfirm = { appViewModel.confirmBooking(booking, "Terminal Admin") }, onCancel = { appViewModel.cancelBooking(booking) })
                     }
                 }
             }
@@ -184,7 +191,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         BookingRow(
                             booking, 
                             onConfirm = {}, 
-                            onCancel = { viewModel.cancelBooking(booking) }, 
+                            onCancel = { appViewModel.cancelBooking(booking) }, 
                             isConfirmed = true,
                             onIssueTicket = { showTicket = true }
                         )
@@ -206,7 +213,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         MapView(center = listOf(13.2167, 120.5833), markers = markers, modifier = Modifier.fillMaxSize())
                     }
                     3 -> {
-                        val ships by viewModel.ships.collectAsState()
+                        val ships by appViewModel.ships.collectAsState()
                         Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                             Row(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("FERRY SYNC MONITOR", fontWeight = FontWeight.Black, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
@@ -264,12 +271,12 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
             ScannerDialog(onDismiss = { showScanner = false }) { ref ->
                 val b = bookings.find { it.referenceId == ref }
                 if (b != null) {
-                    viewModel.showToast("✅ Valid: ${b.name} (${b.type})")
+                    appViewModel.showToast("✅ Valid: ${b.name} (${b.type})")
                     if (b.status == "Pending") {
-                        viewModel.confirmBooking(b, "Terminal Admin")
+                        appViewModel.confirmBooking(b, "Terminal Admin")
                     }
                 } else {
-                    viewModel.showToast("❌ Invalid Reference ID")
+                    appViewModel.showToast("❌ Invalid Reference ID")
                 }
                 showScanner = false
             }

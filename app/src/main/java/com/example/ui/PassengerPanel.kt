@@ -21,21 +21,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
 import com.example.ui.theme.*
 import com.example.viewmodel.AppViewModel
 import kotlinx.coroutines.delay
 
+import com.example.viewmodel.AuthViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
-    val ships by viewModel.ships.collectAsState()
-    val trips by viewModel.trips.collectAsState()
-    val bookings by viewModel.bookings.collectAsState()
-    val abraWeather by viewModel.abraWeather.collectAsState()
-    val mamburaoWeather by viewModel.mamburaoWeather.collectAsState()
-    val announcement by viewModel.announcements.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
+fun PassengerPanel(
+    appViewModel: AppViewModel,
+    authViewModel: AuthViewModel = viewModel(),
+    isSuperAdmin: Boolean = false,
+    onStartBooking: () -> Unit
+) {
+    val ships by appViewModel.ships.collectAsState()
+    val trips by appViewModel.trips.collectAsState()
+    val bookings by appViewModel.bookings.collectAsState()
+    val abraWeather by appViewModel.abraWeather.collectAsState()
+    val mamburaoWeather by appViewModel.mamburaoWeather.collectAsState()
+    val announcements by appViewModel.announcements.collectAsState()
+    val isOnline by appViewModel.isOnline.collectAsState()
     
     var showBookingForm by remember { mutableStateOf<String?>(null) } // "Ferry" or "Van"
     var selectedEntityId by remember { mutableStateOf<String?>(null) }
@@ -45,7 +53,7 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     var showConfirmation by remember { mutableStateOf<Booking?>(null) }
     var showMyBookings by remember { mutableStateOf(false) }
 
-    val gpsIndices by viewModel.gpsIndices.collectAsState()
+    val gpsIndices by appViewModel.gpsIndices.collectAsState()
 
     val pulseScale by animateFloatAsState(
         targetValue = if (countdown <= 3) 1.05f else 1f,
@@ -59,7 +67,7 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     if (trackingTripId != null) {
         val trip = trips.find { it.id == trackingTripId }
         val route = trip?.route ?: "default"
-        val location = viewModel.getTripLocation(trackingTripId!!, route)
+        val location = appViewModel.getTripLocation(trackingTripId!!, route)
         TrackRideScreen(trip, location) { trackingTripId = null }
         return
     }
@@ -125,12 +133,22 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         }
                         if (!isSuperAdmin) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { viewModel.logout() }) {
+                            IconButton(onClick = { authViewModel.logout() }) {
                                 Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
                 }
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onStartBooking,
+                containerColor = Orange,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, "Book Now")
             }
         }
     ) { padding ->
@@ -187,7 +205,7 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         WeatherWidget(abraWeather, "Abra Port", isOnline, onSpeak = {
                             abraWeather?.let {
                                 val (_, label) = getWeatherLabel(it.weatherCode)
-                                viewModel.speak("Weather update for Abra Port: it's $label with a temperature of ${it.temperature.toInt()} degrees Celsius.")
+                                appViewModel.speak("Weather update for Abra Port: it's $label with a temperature of ${it.temperature.toInt()} degrees Celsius.")
                             }
                         })
                     }
@@ -195,13 +213,13 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         WeatherWidget(mamburaoWeather, "Mamburao", isOnline, onSpeak = {
                             mamburaoWeather?.let {
                                 val (_, label) = getWeatherLabel(it.weatherCode)
-                                viewModel.speak("Weather update for Mamburao: it's $label with a temperature of ${it.temperature.toInt()} degrees Celsius.")
+                                appViewModel.speak("Weather update for Mamburao: it's $label with a temperature of ${it.temperature.toInt()} degrees Celsius.")
                             }
                         })
                     }
                 }
                 
-                announcement.firstOrNull()?.let {
+                announcements.firstOrNull()?.let {
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         shape = RoundedCornerShape(24.dp),
@@ -270,7 +288,7 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                     if (showBookingForm == "Ferry") {
                         val ship = ships.find { it.id == selectedEntityId }
                         if (ship != null) FerryBookingFields(ship) { name, contact, type ->
-                            viewModel.bookFerry(ship, name, contact, type)
+                            appViewModel.bookFerry(ship, name, contact, type)
                             showBookingForm = null
                             // We can't easily get the last inserted booking, so mock a confirmation for UI
                             showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", ship.id, "Ferry", name, contact, type, status = "Pending", timestamp = "")
@@ -278,7 +296,7 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                     } else {
                         val trip = trips.find { it.id == selectedEntityId }
                         if (trip != null) VanBookingFields(trip) { name, contact, pickup, seats ->
-                            viewModel.bookVanBus(trip, name, contact, pickup, seats)
+                            appViewModel.bookVanBus(trip, name, contact, pickup, seats)
                             showBookingForm = null
                             showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", trip.id, trip.type, name, contact, "$seats seats", status = "Pending", timestamp = "")
                         }

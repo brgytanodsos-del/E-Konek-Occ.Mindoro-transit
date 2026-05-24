@@ -18,18 +18,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
 import com.example.ui.theme.Navy
 import com.example.ui.theme.Orange
 import com.example.viewmodel.AppViewModel
 
+import com.example.viewmodel.AuthViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
-    val ships by viewModel.ships.collectAsState()
-    val bookings by viewModel.bookings.collectAsState()
-    val abraWeather by viewModel.abraWeather.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
+fun PortStaffPanel(
+    appViewModel: AppViewModel,
+    authViewModel: AuthViewModel = viewModel(),
+    isSuperAdmin: Boolean = false
+) {
+    val ships by appViewModel.ships.collectAsState()
+    val bookings by appViewModel.bookings.collectAsState()
+    val abraWeather by appViewModel.abraWeather.collectAsState()
+    val isOnline by appViewModel.isOnline.collectAsState()
     
     var showScanner by remember { mutableStateOf(false) }
     val ferryBookings = bookings.filter { it.type == "Ferry" }
@@ -87,7 +94,7 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         }
                         if (!isSuperAdmin) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { viewModel.logout() }) {
+                            IconButton(onClick = { authViewModel.logout() }) {
                                 Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                             }
                         }
@@ -103,7 +110,7 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         WeatherWidget(abraWeather, "Abra Port", isOnline, onSpeak = {
                             abraWeather?.let {
                                 val (_, label) = getWeatherLabel(it.weatherCode)
-                                viewModel.speak("Ang panahon sa Abra Port ay $label. Ang temperatura ay ${it.temperature.toInt()} degrees Celsius.")
+                                appViewModel.speak("Ang panahon sa Abra Port ay $label. Ang temperatura ay ${it.temperature.toInt()} degrees Celsius.")
                             }
                         })
                     }
@@ -126,7 +133,7 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
             
             items(ships) { ship ->
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    VesselCard(ship, onStatusChange = { viewModel.updateShipStatus(ship, it) })
+                    VesselCard(ship, onStatusChange = { appViewModel.updateShipStatus(ship, it) })
                 }
             }
             
@@ -150,7 +157,7 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 item { Text("PENDING", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = Orange) }
                 items(pending) { booking ->
                     Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Port Admin") }, onCancel = { viewModel.cancelBooking(booking) })
+                        BookingRow(booking, onConfirm = { appViewModel.confirmBooking(booking, "Port Admin") }, onCancel = { appViewModel.cancelBooking(booking) })
                     }
                 }
             }
@@ -164,7 +171,7 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         BookingRow(
                             booking, 
                             onConfirm = {}, 
-                            onCancel = { viewModel.cancelBooking(booking) }, 
+                            onCancel = { appViewModel.cancelBooking(booking) }, 
                             isConfirmed = true,
                             onIssueTicket = { showTicket = true }
                         )
@@ -182,12 +189,12 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
             ScannerDialog(onDismiss = { showScanner = false }) { ref ->
                 val b = bookings.find { it.referenceId == ref }
                 if (b != null) {
-                    viewModel.showToast("✅ Valid: ${b.name} (${b.type})")
+                    appViewModel.showToast("✅ Valid: ${b.name} (${b.type})")
                     if (b.status == "Pending") {
-                        viewModel.confirmBooking(b, "Port Admin")
+                        appViewModel.confirmBooking(b, "Port Admin")
                     }
                 } else {
-                    viewModel.showToast("❌ Invalid Reference ID")
+                    appViewModel.showToast("❌ Invalid Reference ID")
                 }
                 showScanner = false
             }

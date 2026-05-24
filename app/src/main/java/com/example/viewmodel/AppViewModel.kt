@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import com.example.data.*
+import com.example.data.repository.*
 import com.example.utils.VoiceAssistant
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -22,12 +23,15 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = Room.databaseBuilder(
-        application,
-        AppDatabase::class.java, "mindoro_transit_db"
-    ).build()
-
+    private val db = AppDatabase.getDatabase(application)
     private val dao = db.dao()
+    
+    private val shipRepository = ShipRepository(dao)
+    private val tripRepository = TripRepository(dao)
+    private val bookingRepository = BookingRepository(dao)
+    private val transactionRepository = TransactionRepository(dao)
+    private val announcementRepository = AnnouncementRepository(dao)
+    private val adminRepository = AdminRepository(dao)
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -39,14 +43,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         .build()
         .create(WeatherService::class.java)
 
-    // State
-    val ships = dao.getAllShips().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val trips = dao.getAllTrips().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val bookings = dao.getAllBookings().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val transactions = dao.getAllTransactions().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val announcements = dao.getAllAnnouncements().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val auditLogs = dao.getAllAuditLogs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val payouts = dao.getAllPayouts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // Global State
+    val ships = shipRepository.getAllShips().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val trips = tripRepository.getAllTrips().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val bookings = bookingRepository.getAllBookings().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val transactions = transactionRepository.getAllTransactions().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val announcements = announcementRepository.getAllAnnouncements().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val auditLogs = adminRepository.getAllAuditLogs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val payouts = adminRepository.getAllPayouts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isOnline = MutableStateFlow(true)
     val isOnline = _isOnline.asStateFlow()
@@ -59,12 +63,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _gpsIndices = MutableStateFlow<Map<String, Int>>(emptyMap())
     val gpsIndices = _gpsIndices.asStateFlow()
-
-    private val _currentRole = MutableStateFlow<String?>(null)
-    val currentRole = _currentRole.asStateFlow()
-
-    private val _isAuthenticated = MutableStateFlow(false)
-    val isAuthenticated = _isAuthenticated.asStateFlow()
 
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage = _toastMessage.asStateFlow()
@@ -213,28 +211,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun login(role: String, pin: String?) {
-        val correctPin = AppConstants.ROLE_PINS[role]
-        if (pin == correctPin || role == "passenger") {
-            _currentRole.value = role
-            _isAuthenticated.value = true
-            viewModelScope.launch {
-                dao.insertAuditLog(AuditLog(timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT), role = role, action = "login"))
-            }
-        } else {
-            showToast("Incorrect PIN. Try again.")
-        }
-    }
-
-    fun logout() {
-        val role = _currentRole.value ?: return
-        viewModelScope.launch {
-            dao.insertAuditLog(AuditLog(timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT), role = role, action = "logout"))
-            _currentRole.value = null
-            _isAuthenticated.value = false
-        }
-    }
-
     fun showToast(message: String) {
         _toastMessage.value = message
         viewModelScope.launch {
@@ -259,7 +235,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             isSyncing = !_isOnline.value
         )
         viewModelScope.launch {
-            dao.insertBooking(booking)
+            bookingRepository.insertBooking(booking)
             showToast("Booking Submitted!")
         }
     }
@@ -280,7 +256,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             isSyncing = !_isOnline.value
         )
         viewModelScope.launch {
-            dao.insertBooking(booking)
+            bookingRepository.insertBooking(booking)
             showToast("Booking Submitted!")
         }
     }
@@ -312,19 +288,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 status = "Completed",
                 paid = false
             )
-            dao.insertTransaction(tx)
+            transactionRepository.insertTransaction(tx)
         }
     }
 
     fun cancelBooking(booking: Booking) {
         viewModelScope.launch {
-            dao.updateBooking(booking.copy(status = "Cancelled"))
+            bookingRepository.updateBooking(booking.copy(status = "Cancelled"))
         }
     }
 
     fun refundTransaction(transaction: Transaction) {
         viewModelScope.launch {
-            dao.updateTransaction(transaction.copy(status = "Refunded"))
+            transactionRepository.updateTransaction(transaction.copy(status = "Refunded"))
         }
     }
 
@@ -334,27 +310,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             if (completed.isNotEmpty()) {
                 val totalAmount = completed.sumOf { it.commissionAmount }
                 val count = completed.size
-                dao.insertPayout(Payout(
+                adminRepository.insertPayout(Payout(
                     id = generateId(),
                     date = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT),
                     totalAmount = totalAmount,
                     transactionCount = count
-                ))
-                dao.markAllAsPaid()
+                    ))
+                transactionRepository.markAllAsPaid()
                 showToast("Payout recorded and cleared.")
             }
         }
     }
 
-    fun addShip(ship: Ship) { viewModelScope.launch { dao.insertShips(listOf(ship)) } }
-    fun updateShipStatus(ship: Ship, status: String) { viewModelScope.launch { dao.updateShip(ship.copy(status = status)) } }
+    fun addShip(ship: Ship) { viewModelScope.launch { shipRepository.insertShips(listOf(ship)) } }
+    fun updateShipStatus(ship: Ship, status: String) { viewModelScope.launch { shipRepository.updateShip(ship.copy(status = status)) } }
     
-    fun addTrip(trip: Trip) { viewModelScope.launch { dao.insertTrips(listOf(trip)) } }
-    fun updateTripStatus(trip: Trip, status: String) { viewModelScope.launch { dao.updateTrip(trip.copy(status = status)) } }
+    fun addTrip(trip: Trip) { viewModelScope.launch { tripRepository.insertTrips(listOf(trip)) } }
+    fun updateTripStatus(trip: Trip, status: String) { viewModelScope.launch { tripRepository.updateTrip(trip.copy(status = status)) } }
 
     fun addAnnouncement(text: String, author: String) {
         viewModelScope.launch {
-            dao.insertAnnouncement(Announcement(
+            announcementRepository.insertAnnouncement(Announcement(
                 id = generateId(),
                 text = text,
                 date = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT),

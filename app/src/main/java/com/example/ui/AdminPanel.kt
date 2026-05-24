@@ -20,17 +20,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
 import com.example.ui.theme.*
 import com.example.viewmodel.AppViewModel
 import android.content.Intent
 
+import com.example.viewmodel.AuthViewModel
+import com.example.viewmodel.AdminViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SuperAdminPanel(viewModel: AppViewModel) {
-    val txs by viewModel.transactions.collectAsState()
-    val payouts by viewModel.payouts.collectAsState()
-    val logs by viewModel.auditLogs.collectAsState()
+fun SuperAdminPanel(
+    appViewModel: AppViewModel,
+    adminViewModel: AdminViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val txs by adminViewModel.transactions.collectAsState()
+    val payouts by adminViewModel.payouts.collectAsState()
+    val logs by adminViewModel.auditLogs.collectAsState()
     
     val totalCommissions = txs.filter { it.status == "Completed" }.sumOf { it.commissionAmount }
     val totalGross = txs.filter { it.status == "Completed" }.sumOf { it.grossAmount }
@@ -68,11 +76,10 @@ fun SuperAdminPanel(viewModel: AppViewModel) {
                         Text("ADMIN MODE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                     var showLogoutConfirm by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showLogoutConfirm = true }) { Icon(Icons.Default.Logout, contentDescription = "Logout") }
                     if (showLogoutConfirm) {
-                        TextButton(onClick = { viewModel.logout() }) { Text("Confirm Logout", color = Color.Red, fontSize = 12.sp) }
+                        TextButton(onClick = { authViewModel.logout() }) { Text("Confirm Logout", color = Color.Red, fontSize = 12.sp) }
                         IconButton(onClick = { showLogoutConfirm = false }) { Icon(Icons.Default.Close, contentDescription = null) }
-                    } else {
-                        IconButton(onClick = { showLogoutConfirm = true }) { Icon(Icons.Default.Logout, contentDescription = "Logout") }
                     }
                 }
             )
@@ -179,7 +186,7 @@ fun SuperAdminPanel(viewModel: AppViewModel) {
                             Icon(Icons.Default.Download, null, tint = MaterialTheme.colorScheme.primary)
                         }
                         Button(
-                            onClick = { viewModel.markAllAsPaid() },
+                            onClick = { adminViewModel.markAllAsPaid() },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(12.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
@@ -194,7 +201,7 @@ fun SuperAdminPanel(viewModel: AppViewModel) {
             
             items(filteredTxs) { tx ->
                 Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    TransactionRow(tx, onRefund = { viewModel.refundTransaction(tx) })
+                    TransactionRow(tx, onRefund = { adminViewModel.refundTransaction(tx) })
                 }
             }
 
@@ -230,7 +237,7 @@ fun SuperAdminPanel(viewModel: AppViewModel) {
             AddVoyageDialog(
                 onDismiss = { showAddVoyage = false },
                 onAdd = { name, route, dep, type, cap ->
-                    viewModel.addShip(Ship(generateId(), name, route, dep, dep, "Scheduled", cap, cap, type))
+                    appViewModel.addShip(Ship(generateId(), name, route, dep, dep, "Scheduled", cap, cap, type))
                     showAddVoyage = false
                 }
             )
@@ -240,7 +247,7 @@ fun SuperAdminPanel(viewModel: AppViewModel) {
             AddTripDialog(
                 onDismiss = { showAddTrip = false },
                 onAdd = { route, dep, type, driver, cap ->
-                    viewModel.addTrip(Trip(generateId(), route, dep, type, driver, cap, cap, "Scheduled"))
+                    appViewModel.addTrip(Trip(generateId(), route, dep, type, driver, cap, cap, "Scheduled"))
                     showAddTrip = false
                 }
             )
@@ -250,7 +257,7 @@ fun SuperAdminPanel(viewModel: AppViewModel) {
             AddAnnouncementDialog(
                 onDismiss = { showAddAnnouncement = false },
                 onAdd = { text ->
-                    viewModel.addAnnouncement(text, "Super Admin")
+                    appViewModel.addAnnouncement(text, "Super Admin")
                     showAddAnnouncement = false
                 }
             )
