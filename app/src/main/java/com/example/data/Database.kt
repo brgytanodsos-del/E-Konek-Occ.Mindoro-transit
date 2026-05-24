@@ -1,6 +1,14 @@
 package com.example.data
 
 import androidx.room.*
+import com.example.data.model.Ship
+import com.example.data.model.Trip
+import com.example.data.model.Booking
+import com.example.data.model.Transaction
+import com.example.data.model.Announcement
+import com.example.data.model.AuditLog
+import com.example.data.model.Payout
+import com.example.data.model.User
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -41,13 +49,13 @@ interface AppDao {
     @Update
     suspend fun updateTransaction(transaction: Transaction)
 
-    @Query("SELECT * FROM announcements ORDER BY date DESC")
+    @Query("SELECT * FROM announcements ORDER BY timestamp DESC")
     fun getAllAnnouncements(): Flow<List<Announcement>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAnnouncement(announcement: Announcement)
 
-    @Query("SELECT * FROM audit_log ORDER BY timestamp DESC")
+    @Query("SELECT * FROM audit_logs ORDER BY timestamp DESC")
     fun getAllAuditLogs(): Flow<List<AuditLog>>
 
     @Insert
@@ -66,9 +74,9 @@ interface AppDao {
 @Database(
     entities = [
         Ship::class, Trip::class, Booking::class, Transaction::class,
-        Announcement::class, AuditLog::class, Payout::class
+        Announcement::class, AuditLog::class, Payout::class, User::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -84,7 +92,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "mindoro_transit_db"
-                ).build().also { INSTANCE = it }
+                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
             }
         }
     }

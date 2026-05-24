@@ -8,8 +8,8 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.Room
 import com.example.data.*
+import com.example.data.model.*
 import com.example.data.repository.*
 import com.example.utils.VoiceAssistant
 import kotlinx.coroutines.*
@@ -134,9 +134,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 if (currentShips.isEmpty()) {
                     val now = ZonedDateTime.now()
                     val seedShips = listOf(
-                        Ship("s1", "MV Maria Olive", "Abra Port → Batangas", now.plusHours(2).toInstant().toString(), now.plusHours(4).plusMinutes(30).toInstant().toString(), "Boarding", 300, 120, "RORO"),
-                        Ship("s2", "MV Reina Genoveva", "Abra Port → Puerto Galera", now.plusHours(5).toInstant().toString(), now.plusHours(6).plusMinutes(30).toInstant().toString(), "Scheduled", 250, 250, "Passenger Ferry"),
-                        Ship("s3", "MV Montenegro Star", "Batangas → Abra Port", now.plusHours(8).toInstant().toString(), now.plusHours(10).plusMinutes(30).toInstant().toString(), "Scheduled", 200, 200, "RORO")
+                        Ship("s1", "MV Maria Olive", "Abra Port → Batangas", now.plusHours(2).toInstant().toString(), now.plusHours(4).plusMinutes(30).toInstant().toString(), "Boarding", 300, 180, "RORO"),
+                        Ship("s2", "MV Reina Genoveva", "Abra Port → Puerto Galera", now.plusHours(5).toInstant().toString(), now.plusHours(6).plusMinutes(30).toInstant().toString(), "Scheduled", 250, 0, "Passenger Ferry"),
+                        Ship("s3", "MV Montenegro Star", "Batangas → Abra Port", now.plusHours(8).toInstant().toString(), now.plusHours(10).plusMinutes(30).toInstant().toString(), "Scheduled", 200, 0, "RORO")
                     )
                     dao.insertShips(seedShips)
                 }
@@ -145,19 +145,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 if (currentTrips.isEmpty()) {
                     val now = ZonedDateTime.now()
                     val seedTrips = listOf(
-                        Trip("t1", "Mamburao → Abra Port", now.plusMinutes(30).toInstant().toString(), "Van", "Kuya Jun Dela Rosa", 14, 6, "Boarding"),
-                        Trip("t2", "Abra Port → Mamburao", now.plusHours(1).toInstant().toString(), "Van", "Ate Lorna Bautista", 14, 14, "Scheduled"),
-                        Trip("t3", "Mamburao → San Jose", now.plusHours(2).toInstant().toString(), "Bus", "Mang Cardo Villanueva", 45, 30, "Scheduled"),
-                        Trip("t4", "San Jose → Mamburao", now.plusHours(3).toInstant().toString(), "Bus", "Dodong Reyes", 45, 45, "Scheduled"),
-                        Trip("t5", "Mamburao → Calintaan", now.plusMinutes(45).toInstant().toString(), "Van", "Kuya Romy Santos", 10, 3, "Departed"),
-                        Trip("t6", "Calintaan → Mamburao", now.plusHours(4).toInstant().toString(), "Van", "Nanding Cruz", 10, 10, "Scheduled")
+                        Trip("t1", "Mamburao → Abra Port", now.plusMinutes(30).toInstant().toString(), "Van", "Kuya Jun Dela Rosa", 14, 8, "Boarding"),
+                        Trip("t2", "Abra Port → Mamburao", now.plusHours(1).toInstant().toString(), "Van", "Ate Lorna Bautista", 14, 0, "Scheduled"),
+                        Trip("t3", "Mamburao → San Jose", now.plusHours(2).toInstant().toString(), "Bus", "Mang Cardo Villanueva", 45, 15, "Scheduled"),
+                        Trip("t4", "San Jose → Mamburao", now.plusHours(3).toInstant().toString(), "Bus", "Dodong Reyes", 45, 0, "Scheduled"),
+                        Trip("t5", "Mamburao → Calintaan", now.plusMinutes(45).toInstant().toString(), "Van", "Kuya Romy Santos", 10, 7, "Departed"),
+                        Trip("t6", "Calintaan → Mamburao", now.plusHours(4).toInstant().toString(), "Van", "Nanding Cruz", 10, 0, "Scheduled")
                     )
                     dao.insertTrips(seedTrips)
                 }
 
                 val currentAnnouncements = dao.getAllAnnouncements().first()
                 if (currentAnnouncements.isEmpty()) {
-                    dao.insertAnnouncement(Announcement(generateId(), "All trips are on schedule. Please arrive 30 mins early.", ZonedDateTime.now().toInstant().toString(), "System"))
+                    dao.insertAnnouncement(Announcement(id = generateId(), message = "All trips are on schedule. Please arrive 30 mins early.", author = "System"))
                 }
             } catch (e: Exception) {
                 // Silently fail seed if already seeded or error
@@ -266,8 +266,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val updatedBooking = booking.copy(status = "Confirmed")
             dao.updateBooking(updatedBooking)
             
-            val gross = getGrossAmount(booking.type, booking.ticketType, booking.seats)
-            val commission = getCommission(booking.type, booking.ticketType, booking.seats)
+            val gross = getGrossAmount(booking.type, booking.ticketType ?: "Regular", booking.seats)
+            val commission = getCommission(booking.type, booking.ticketType ?: "Regular", booking.seats)
             
             val route = when (booking.type) {
                 "Ferry" -> ships.value.find { it.id == booking.entityId }?.route ?: "Unknown"
@@ -281,7 +281,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 bookingId = booking.id,
                 passengerName = booking.name,
                 route = route,
-                ticketType = booking.ticketType,
+                ticketType = booking.ticketType ?: "Regular",
                 grossAmount = gross,
                 commissionAmount = commission,
                 confirmedBy = confirmedBy,
@@ -332,8 +332,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             announcementRepository.insertAnnouncement(Announcement(
                 id = generateId(),
-                text = text,
-                date = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT),
+                message = text,
                 author = author
             ))
         }

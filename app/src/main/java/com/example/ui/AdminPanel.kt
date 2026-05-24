@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
+import com.example.data.model.*
 import com.example.ui.theme.*
 import com.example.viewmodel.AppViewModel
 import android.content.Intent
@@ -396,7 +397,7 @@ fun AuditLogSection(logs: List<AuditLog>) {
         }
         if (expanded) {
             logs.take(20).forEach { log ->
-                Text("${formatPST(log.timestamp)}: ${log.role.uppercase()} ${log.action}", fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp))
+                Text("${formatPST(log.timestamp)}: ${log.userRole.uppercase()} ${log.action}", fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp))
             }
         }
     }

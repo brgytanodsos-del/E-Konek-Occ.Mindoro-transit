@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
+import com.example.data.model.*
 import com.example.ui.theme.Navy
 import com.example.ui.theme.Orange
 import com.example.viewmodel.AppViewModel
@@ -313,20 +314,21 @@ fun TripCard(trip: Trip, onStatusChange: (String) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Event, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    text = " Dep: ${formatPST(trip.depTime)}",
+                    text = " Dep: ${formatPST(trip.departureTime)}",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
+                val available = trip.capacity - trip.booked
                 Surface(
-                    color = if (trip.available > 0) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                    color = if (available > 0) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        "${trip.available}/${trip.capacity} SEATS",
+                        "$available/${trip.capacity} SEATS",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (trip.available > 0) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        color = if (available > 0) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         letterSpacing = 0.5.sp
                     )

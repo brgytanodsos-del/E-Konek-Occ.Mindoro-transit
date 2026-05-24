@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
+import com.example.data.model.*
 import com.example.ui.theme.Navy
 import com.example.ui.theme.Orange
 import com.example.viewmodel.AppViewModel
@@ -231,7 +232,7 @@ fun VesselCard(ship: Ship, onStatusChange: (String) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    text = " Dep: ${formatPST(ship.depTime)}",
+                    text = " Dep: ${formatPST(ship.departureTime)}",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -241,7 +242,7 @@ fun VesselCard(ship: Ship, onStatusChange: (String) -> Unit) {
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        "${ship.available}/${ship.capacity} SLOTS",
+                        "${ship.capacity - ship.currentPassengers}/${ship.capacity} SLOTS",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,

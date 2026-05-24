@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.data.*
+import com.example.data.model.*
 import com.example.ui.theme.*
 
 @Composable
@@ -229,7 +230,7 @@ fun BookingRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(booking.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
                 Text(booking.contact, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(booking.ticketType, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(booking.ticketType ?: "", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             if (!isConfirmed) {
                 Row {
@@ -294,7 +295,7 @@ fun TicketDialog(booking: Booking, ship: Ship?, onDismiss: () -> Unit) {
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("TYPE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                            Text(booking.ticketType, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(booking.ticketType ?: "", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                     
@@ -303,7 +304,7 @@ fun TicketDialog(booking: Booking, ship: Ship?, onDismiss: () -> Unit) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text("DEPARTURE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                            Text(formatPST(ship?.depTime ?: ""), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(formatPST(ship?.departureTime ?: ""), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                     

@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppConstants
-import com.example.data.AuditLog
-import com.example.data.AppDatabase
+import com.example.data.*
+import com.example.data.model.*
 import com.example.data.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +32,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _currentRole.value = role
             _isAuthenticated.value = true
             viewModelScope.launch {
-                adminRepository.insertAuditLog(AuditLog(timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT), role = role, action = "login"))
+                adminRepository.insertAuditLog(AuditLog(userRole = role, action = "login"))
             }
         } else {
             showToast("Incorrect PIN. Try again.")
@@ -42,7 +42,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun logout() {
         val role = _currentRole.value ?: return
         viewModelScope.launch {
-            adminRepository.insertAuditLog(AuditLog(timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT), role = role, action = "logout"))
+            adminRepository.insertAuditLog(AuditLog(userRole = role, action = "logout"))
             _currentRole.value = null
             _isAuthenticated.value = false
         }

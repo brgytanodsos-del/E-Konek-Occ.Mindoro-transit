@@ -1,6 +1,7 @@
 package com.example.data.repository
 
-import com.example.data.*
+import com.example.data.AppDao
+import com.example.data.model.*
 import kotlinx.coroutines.flow.Flow
 
 class ShipRepository(private val dao: AppDao) {

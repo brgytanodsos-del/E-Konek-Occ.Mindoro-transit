@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
+import com.example.data.model.*
 import com.example.data.repository.*
 import com.example.utils.generateId
 import kotlinx.coroutines.flow.*
@@ -13,9 +14,10 @@ import java.time.format.DateTimeFormatter
 
 class ScheduleViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
-    private val shipRepository = ShipRepository(db.dao())
-    private val tripRepository = TripRepository(db.dao())
-    private val announcementRepository = AnnouncementRepository(db.dao())
+    private val dao = db.dao()
+    private val shipRepository = ShipRepository(dao)
+    private val tripRepository = TripRepository(dao)
+    private val announcementRepository = AnnouncementRepository(dao)
 
     val ships = shipRepository.getAllShips().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val trips = tripRepository.getAllTrips().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -37,8 +39,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             announcementRepository.insertAnnouncement(Announcement(
                 id = generateId(),
-                text = text,
-                date = ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT),
+                message = text,
                 author = author
             ))
         }

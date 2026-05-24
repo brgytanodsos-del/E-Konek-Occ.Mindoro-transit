@@ -9,9 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.data.Booking
-import com.example.data.Ship
-import com.example.data.Trip
+import com.example.data.model.Booking
+import com.example.data.model.Ship
+import com.example.data.model.Trip
 import com.example.viewmodel.BookingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

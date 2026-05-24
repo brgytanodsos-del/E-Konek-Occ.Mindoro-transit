@@ -119,6 +119,15 @@ fun formatPST(iso: String): String {
     }
 }
 
+fun formatPST(timestamp: Long): String {
+    return try {
+        val dt = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(timestamp), java.time.ZoneId.of("Asia/Manila"))
+        dt.format(DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a"))
+    } catch (e: Exception) {
+        timestamp.toString()
+    }
+}
+
 fun getCommission(type: String, ticketType: String, seats: Int): Double {
     return when (type) {
         "Ferry" -> {

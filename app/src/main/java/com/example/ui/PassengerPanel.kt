@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
+import com.example.data.model.*
 import com.example.ui.theme.*
 import com.example.viewmodel.AppViewModel
 import kotlinx.coroutines.delay
@@ -63,6 +64,13 @@ fun PassengerPanel(
         ),
         label = "pulse"
     )
+
+    if (ships.isEmpty() && trips.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Orange)
+        }
+        return
+    }
 
     if (trackingTripId != null) {
         val trip = trips.find { it.id == trackingTripId }
@@ -228,7 +236,7 @@ fun PassengerPanel(
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Campaign, null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(it.text, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(it.message, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -259,7 +267,7 @@ fun PassengerPanel(
             }
             
             items(ships.filter { it.status != "Cancelled" && it.status != "Departed" }) { ship ->
-                ScheduleRow(ship.name, ship.route, ship.status, ship.available, ship.capacity) {
+                ScheduleRow(ship.name, ship.route, ship.status, ship.capacity - ship.currentPassengers, ship.capacity) {
                     selectedEntityId = ship.id
                     showBookingForm = "Ferry"
                 }
@@ -271,7 +279,7 @@ fun PassengerPanel(
             }
             
             items(trips.filter { it.status != "Cancelled" && it.status != "Completed" }) { trip ->
-                ScheduleRow(trip.driver, trip.route, trip.status, trip.available, trip.capacity) {
+                ScheduleRow(trip.driver, trip.route, trip.status, trip.capacity - trip.booked, trip.capacity) {
                     selectedEntityId = trip.id
                     showBookingForm = "Van"
                 }
@@ -291,14 +299,14 @@ fun PassengerPanel(
                             appViewModel.bookFerry(ship, name, contact, type)
                             showBookingForm = null
                             // We can't easily get the last inserted booking, so mock a confirmation for UI
-                            showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", ship.id, "Ferry", name, contact, type, status = "Pending", timestamp = "")
+                            showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", ship.id, "Ferry", name, contact, type, status = "Pending", timestamp = "", amount = 0.0)
                         }
                     } else {
                         val trip = trips.find { it.id == selectedEntityId }
                         if (trip != null) VanBookingFields(trip) { name, contact, pickup, seats ->
                             appViewModel.bookVanBus(trip, name, contact, pickup, seats)
                             showBookingForm = null
-                            showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", trip.id, trip.type, name, contact, "$seats seats", status = "Pending", timestamp = "")
+                            showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", trip.id, trip.type, name, contact, "$seats seats", status = "Pending", timestamp = "", amount = 0.0)
                         }
                     }
                 },
@@ -542,7 +550,7 @@ fun VanBookingFields(trip: Trip, onComplete: (String, String, String, Int) -> Un
             Text("Seats:")
             IconButton(onClick = { if (seats > 1) seats-- }) { Icon(Icons.Default.Remove, null) }
             Text("$seats")
-            IconButton(onClick = { if (seats < trip.available) seats++ }) { Icon(Icons.Default.Add, null) }
+            IconButton(onClick = { if (seats < (trip.capacity - trip.booked)) seats++ }) { Icon(Icons.Default.Add, null) }
         }
         Button(onClick = { onComplete(name, contact, pickup, seats) }, modifier = Modifier.fillMaxWidth(), enabled = name.isNotEmpty() && contact.isNotEmpty()) {
             Text("Book Now")

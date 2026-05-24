@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
+import com.example.data.model.*
 import com.example.data.repository.BookingRepository
 import com.example.data.repository.ShipRepository
 import com.example.data.repository.TripRepository
