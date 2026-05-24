@@ -1,6 +1,9 @@
 package com.example.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +31,7 @@ import kotlinx.coroutines.delay
 fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     val ships by viewModel.ships.collectAsState()
     val trips by viewModel.trips.collectAsState()
+    val bookings by viewModel.bookings.collectAsState()
     val abraWeather by viewModel.abraWeather.collectAsState()
     val mamburaoWeather by viewModel.mamburaoWeather.collectAsState()
     val announcement by viewModel.announcements.collectAsState()
@@ -39,8 +43,18 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     var countdown by remember { mutableStateOf(30) }
     var trackingTripId by remember { mutableStateOf<String?>(null) }
     var showConfirmation by remember { mutableStateOf<Booking?>(null) }
+    var showMyBookings by remember { mutableStateOf(false) }
 
     val gpsIndices by viewModel.gpsIndices.collectAsState()
+
+    val pulseScale by animateFloatAsState(
+        targetValue = if (countdown <= 3) 1.05f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
 
     if (trackingTripId != null) {
         val trip = trips.find { it.id == trackingTripId }
@@ -105,6 +119,10 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                                 Text("JD", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp)
                             }
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { showMyBookings = !showMyBookings }, modifier = Modifier.size(40.dp).background(if (showMyBookings) Navy else Color.Transparent, CircleShape)) {
+                            Icon(Icons.Default.ConfirmationNumber, null, tint = if (showMyBookings) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        }
                         if (!isSuperAdmin) {
                             Spacer(modifier = Modifier.width(8.dp))
                             IconButton(onClick = { viewModel.logout() }) {
@@ -166,10 +184,20 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).horizontalScroll(rememberScrollState())) {
                     Box(modifier = Modifier.width(200.dp)) {
-                        WeatherWidget(abraWeather, "Abra Port", isOnline)
+                        WeatherWidget(abraWeather, "Abra Port", isOnline, onSpeak = {
+                            abraWeather?.let {
+                                val (_, label) = getWeatherLabel(it.weatherCode)
+                                viewModel.speak("Weather update for Abra Port: it's $label with a temperature of ${it.temperature.toInt()} degrees Celsius.")
+                            }
+                        })
                     }
                     Box(modifier = Modifier.width(200.dp)) {
-                        WeatherWidget(mamburaoWeather, "Mamburao", isOnline)
+                        WeatherWidget(mamburaoWeather, "Mamburao", isOnline, onSpeak = {
+                            mamburaoWeather?.let {
+                                val (_, label) = getWeatherLabel(it.weatherCode)
+                                viewModel.speak("Weather update for Mamburao: it's $label with a temperature of ${it.temperature.toInt()} degrees Celsius.")
+                            }
+                        })
                     }
                 }
                 
@@ -185,6 +213,23 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                             Text(it.text, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+                }
+
+                if (showMyBookings) {
+                    Text("MY ACTIVE BOOKINGS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+                    val myBookings = bookings.filter { it.status != "Cancelled" }
+                    if (myBookings.isEmpty()) {
+                        Text("No active bookings found.", fontSize = 12.sp, modifier = Modifier.padding(20.dp), color = Color.Gray)
+                    }
+                    myBookings.forEach { b ->
+                        BookingCard(b) {
+                            if (b.type != "Ferry") {
+                                trackingTripId = b.entityId
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("AVAILABLE ROUTES", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
                 }
                 
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom) {
@@ -271,6 +316,26 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 }
             )
         }
+
+        // Floating Offline Sync Badge
+        val unsyncedCount = bookings.filter { it.isSyncing }.size
+        if (unsyncedCount > 0 && !isOnline) {
+            Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error,
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 8.dp,
+                    shadowElevation = 4.dp,
+                    modifier = Modifier.padding(bottom = if (isSuperAdmin) 60.dp else 0.dp)
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CloudOff, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("📥 $unsyncedCount bookings pending sync", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -311,6 +376,52 @@ fun TrackRideScreen(trip: Trip?, location: List<Double>, onBack: () -> Unit) {
                         val secs = etaSeconds % 60
                         Text("%02d:%02dm".format(mins, secs), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BookingCard(b: Booking, onTrack: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(if (b.type == "Ferry") Icons.Default.DirectionsBoat else Icons.Default.DirectionsBus, null, tint = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(b.referenceId, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    Text("${b.ticketType} • ${b.type}", fontSize = 11.sp, color = Color.Gray)
+                }
+                Surface(color = if (b.status == "Confirmed") SuccessContainerSleek else MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp)) {
+                    Text(b.status.uppercase(), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 9.sp, fontWeight = FontWeight.Black, color = if (b.status == "Confirmed") OnSuccessContainerSleek else MaterialTheme.colorScheme.primary)
+                }
+            }
+            if (b.status == "Confirmed" && b.type != "Ferry") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onTrack, modifier = Modifier.fillMaxWidth().height(36.dp), contentPadding = PaddingValues(0.dp)) {
+                    Icon(Icons.Default.Map, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Track My Ride", fontSize = 11.sp)
+                }
+            } else if (b.status == "Confirmed") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    Image(
+                        painter = coil.compose.rememberAsyncImagePainter("https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${b.referenceId}"),
+                        contentDescription = "QR",
+                        modifier = Modifier.size(80.dp)
+                    )
                 }
             }
         }

@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import com.example.data.*
+import com.example.utils.VoiceAssistant
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import com.squareup.moshi.Moshi
@@ -68,11 +69,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage = _toastMessage.asStateFlow()
 
+    private val voiceAssistant = VoiceAssistant(application)
+
     init {
         setupConnectivityObserver(application)
         seedData()
         startGpsUpdates()
         startWeatherUpdates()
+    }
+
+    fun speak(text: String) {
+        voiceAssistant.speak(text)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceAssistant.stop()
     }
 
     private fun setupConnectivityObserver(context: Context) {

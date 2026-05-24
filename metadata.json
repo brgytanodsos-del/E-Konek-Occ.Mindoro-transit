@@ -1,6 +1,6 @@
 {
-  "name": "MindoroTransit",
-  "description": "Port & Terminal Management System for Occidental Mindoro with role-based access and offline tracking.",
+  "name": "E-Konek Transit",
+  "description": "Port & Terminal Management for Occidental Mindoro. Role-based access, ticket booking, and live tracking.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -31,10 +31,8 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     val abraWeather by viewModel.abraWeather.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     
+    var showScanner by remember { mutableStateOf(false) }
     val ferryBookings = bookings.filter { it.type == "Ferry" }
-
-    var showAddVoyage by remember { mutableStateOf(false) }
-    var showAddAnnouncement by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -74,6 +72,10 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { showScanner = true }, modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)) {
+                            Icon(Icons.Default.QrCodeScanner, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             modifier = Modifier.size(40.dp),
                             shape = CircleShape,
@@ -98,7 +100,12 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
             item {
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(modifier = Modifier.weight(1.3f)) {
-                        WeatherWidget(abraWeather, "Abra Port", isOnline)
+                        WeatherWidget(abraWeather, "Abra Port", isOnline, onSpeak = {
+                            abraWeather?.let {
+                                val (_, label) = getWeatherLabel(it.weatherCode)
+                                viewModel.speak("Ang panahon sa Abra Port ay $label. Ang temperatura ay ${it.temperature.toInt()} degrees Celsius.")
+                            }
+                        })
                     }
                     Card(
                         modifier = Modifier.weight(1f).height(110.dp),
@@ -117,29 +124,6 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 Text("VESSEL SCHEDULE", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
             }
             
-            item {
-                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { showAddVoyage = true },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Voyage", fontSize = 12.sp)
-                    }
-                    OutlinedButton(
-                        onClick = { showAddAnnouncement = true },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Announcement, null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Announce", fontSize = 12.sp)
-                    }
-                }
-            }
-            
             items(ships) { ship ->
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     VesselCard(ship, onStatusChange = { viewModel.updateShipStatus(ship, it) })
@@ -148,90 +132,67 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
             
             item {
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("PENDING RESERVATIONS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+                Text("RESERVATIONS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
             }
             
-            items(ferryBookings.filter { it.status == "Pending" }) { booking ->
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Port Admin") }, onCancel = { viewModel.cancelBooking(booking) })
+            val pending = ferryBookings.filter { it.status == "Pending" }
+            val confirmed = ferryBookings.filter { it.status == "Confirmed" }
+
+            if (pending.isEmpty() && confirmed.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                        Text("No bookings found", color = Color.Gray, fontSize = 14.sp)
+                    }
+                }
+            }
+
+            if (pending.isNotEmpty()) {
+                item { Text("PENDING", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = Orange) }
+                items(pending) { booking ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Port Admin") }, onCancel = { viewModel.cancelBooking(booking) })
+                    }
+                }
+            }
+
+            if (confirmed.isNotEmpty()) {
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item { Text("CONFIRMED", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = Color(0xFF16A34A)) }
+                items(confirmed) { booking ->
+                    var showTicket by remember { mutableStateOf(false) }
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        BookingRow(
+                            booking, 
+                            onConfirm = {}, 
+                            onCancel = { viewModel.cancelBooking(booking) }, 
+                            isConfirmed = true,
+                            onIssueTicket = { showTicket = true }
+                        )
+                    }
+                    if (showTicket) {
+                        TicketDialog(booking, ships.find { it.id == booking.entityId }) { showTicket = false }
+                    }
                 }
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
 
-        if (showAddVoyage) {
-            AddVoyageDialog(
-                onDismiss = { showAddVoyage = false },
-                onAdd = { name, route, dep, type, cap ->
-                    viewModel.addShip(Ship(generateId(), name, route, dep, dep, "Scheduled", cap, cap, type))
-                    showAddVoyage = false
+        if (showScanner) {
+            ScannerDialog(onDismiss = { showScanner = false }) { ref ->
+                val b = bookings.find { it.referenceId == ref }
+                if (b != null) {
+                    viewModel.showToast("✅ Valid: ${b.name} (${b.type})")
+                    if (b.status == "Pending") {
+                        viewModel.confirmBooking(b, "Port Admin")
+                    }
+                } else {
+                    viewModel.showToast("❌ Invalid Reference ID")
                 }
-            )
-        }
-
-        if (showAddAnnouncement) {
-            AddAnnouncementDialog(
-                onDismiss = { showAddAnnouncement = false },
-                onAdd = { text ->
-                    viewModel.addAnnouncement(text, "Port Admin")
-                    showAddAnnouncement = false
-                }
-            )
+                showScanner = false
+            }
         }
     }
-}
-
-@Composable
-fun AddVoyageDialog(onDismiss: () -> Unit, onAdd: (String, String, String, String, Int) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var route by remember { mutableStateOf("Abra Port → Batangas") }
-    var dep by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("RORO") }
-    var cap by remember { mutableStateOf("200") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Voyage") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Ship Name") })
-                OutlinedTextField(value = route, onValueChange = { route = it }, label = { Text("Route") })
-                OutlinedTextField(value = dep, onValueChange = { dep = it }, label = { Text("Dep Time (ISO)") }, placeholder = { Text("2026-05-24T20:00:00Z") })
-                OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (RORO/Ferry)") })
-                OutlinedTextField(value = cap, onValueChange = { cap = it }, label = { Text("Capacity") })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onAdd(name, route, dep, type, cap.toIntOrNull() ?: 200) }) { Text("Add") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-@Composable
-fun AddAnnouncementDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Post Announcement") },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Message") },
-                modifier = Modifier.fillMaxWidth().height(120.dp)
-            )
-        },
-        confirmButton = {
-            Button(onClick = { onAdd(text) }) { Text("Post") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }
 
 @Composable
@@ -286,36 +247,4 @@ fun VesselCard(ship: Ship, onStatusChange: (String) -> Unit) {
     }
 }
 
-@Composable
-fun StatusDropdown(current: String, onStatusChange: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val statuses = listOf("Scheduled", "Boarding", "Departed", "Delayed", "Cancelled")
-    
-    Box {
-        AssistChip(
-            onClick = { expanded = true },
-            label = { Text(current) },
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) }
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            statuses.forEach { s ->
-                DropdownMenuItem(text = { Text(s) }, onClick = { onStatusChange(s); expanded = false })
-            }
-        }
-    }
-}
 
-@Composable
-fun BookingRow(booking: Booking, onConfirm: () -> Unit, onCancel: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(booking.name, fontWeight = FontWeight.Bold)
-                Text(booking.contact, fontSize = 12.sp)
-                Text("${booking.ticketType} (${booking.status})", fontSize = 10.sp)
-            }
-            IconButton(onClick = onConfirm) { Icon(Icons.Default.Check, null, tint = Color.Green) }
-            IconButton(onClick = onCancel) { Icon(Icons.Default.Close, null, tint = Color.Red) }
-        }
-    }
-}

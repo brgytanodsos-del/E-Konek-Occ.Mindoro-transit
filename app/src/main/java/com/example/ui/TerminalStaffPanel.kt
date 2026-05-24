@@ -33,7 +33,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     val gpsIndices by viewModel.gpsIndices.collectAsState()
     
     var selectedTab by remember { mutableStateOf(0) }
-    var showAddTrip by remember { mutableStateOf(false) }
+    var showScanner by remember { mutableStateOf(false) }
     val terminalBookings = bookings.filter { it.type == "Van" || it.type == "Bus" }
 
     Scaffold(
@@ -74,6 +74,10 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { showScanner = true }, modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)) {
+                            Icon(Icons.Default.QrCodeScanner, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             modifier = Modifier.size(40.dp),
                             shape = CircleShape,
@@ -101,9 +105,10 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 contentColor = MaterialTheme.colorScheme.primary,
                 divider = {}
             ) {
-                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Trips", fontSize = 12.sp, fontWeight = if(selectedTab==0) FontWeight.Bold else FontWeight.Normal) })
-                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Bookings", fontSize = 12.sp, fontWeight = if(selectedTab==1) FontWeight.Bold else FontWeight.Normal) })
-                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Live Map", fontSize = 12.sp, fontWeight = if(selectedTab==2) FontWeight.Bold else FontWeight.Normal) })
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Trips", fontSize = 11.sp, fontWeight = if(selectedTab==0) FontWeight.Bold else FontWeight.Normal) })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Bookings", fontSize = 11.sp, fontWeight = if(selectedTab==1) FontWeight.Bold else FontWeight.Normal) })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Map", fontSize = 11.sp, fontWeight = if(selectedTab==2) FontWeight.Bold else FontWeight.Normal) })
+                Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text("Ships", fontSize = 11.sp, fontWeight = if(selectedTab==3) FontWeight.Bold else FontWeight.Normal) })
             }
             
             Box(modifier = Modifier.weight(1f)) {
@@ -113,7 +118,12 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                             item {
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Box(modifier = Modifier.weight(1.3f)) {
-                                        WeatherWidget(mamburaoWeather, "Mamburao Term.", isOnline)
+                                        WeatherWidget(mamburaoWeather, "Mamburao Term.", isOnline, onSpeak = {
+                                            mamburaoWeather?.let { 
+                                                val (_, label) = getWeatherLabel(it.weatherCode)
+                                                viewModel.speak("Ang panahon sa Mamburao Terminal ay $label. Ang temperatura ay ${it.temperature.toInt()} degrees Celsius.")
+                                            }
+                                        })
                                     }
                                     Card(
                                         modifier = Modifier.weight(1f).height(110.dp),
@@ -131,18 +141,6 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                                 }
                                 Text("ACTIVE TRIPS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
                             }
-                            
-                            item {
-                                Button(
-                                    onClick = { showAddTrip = true },
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Add Trip")
-                                }
-                            }
 
                             items(trips) { trip ->
                                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -153,14 +151,49 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                     }
                     1 -> {
                         LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                            item {
-                                Text("PENDING BOOKINGS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
-                            }
-                            items(terminalBookings.filter { it.status == "Pending" }) { booking ->
-                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                    BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Terminal Admin") }, onCancel = { viewModel.cancelBooking(booking) })
-                                }
-                            }
+            item {
+                Text("BOOKINGS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+            }
+            
+            val pending = terminalBookings.filter { it.status == "Pending" }
+            val confirmed = terminalBookings.filter { it.status == "Confirmed" }
+
+            if (pending.isEmpty() && confirmed.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                        Text("No bookings found", color = Color.Gray, fontSize = 14.sp)
+                    }
+                }
+            }
+
+            if (pending.isNotEmpty()) {
+                item { Text("PENDING", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = Orange) }
+                items(pending) { booking ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Terminal Admin") }, onCancel = { viewModel.cancelBooking(booking) })
+                    }
+                }
+            }
+
+            if (confirmed.isNotEmpty()) {
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item { Text("CONFIRMED", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = Color(0xFF16A34A)) }
+                items(confirmed) { booking ->
+                    var showTicket by remember { mutableStateOf(false) }
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        BookingRow(
+                            booking, 
+                            onConfirm = {}, 
+                            onCancel = { viewModel.cancelBooking(booking) }, 
+                            isConfirmed = true,
+                            onIssueTicket = { showTicket = true }
+                        )
+                    }
+                    if (showTicket) {
+                        TicketDialog(booking, null) { showTicket = false }
+                    }
+                }
+            }
                         }
                     }
                     2 -> {
@@ -168,54 +201,80 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         val markers = activeTrips.map { trip ->
                             val route = AppConstants.GPS_ROUTES[trip.route] ?: AppConstants.GPS_ROUTES["default"]!!
                             val index = gpsIndices[trip.id] ?: 0
-                            MapMarker(trip.id, route[index], "${trip.driver} (${trip.type}) - ${trip.route}")
+                            MapMarker(trip.id, route[index % route.size], "${trip.driver} (${trip.type}) - ${trip.route}")
                         }
                         MapView(center = listOf(13.2167, 120.5833), markers = markers, modifier = Modifier.fillMaxSize())
+                    }
+                    3 -> {
+                        val ships by viewModel.ships.collectAsState()
+                        Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("FERRY SYNC MONITOR", fontWeight = FontWeight.Black, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+                                Surface(color = Color(0xFFDCFCE7), shape = RoundedCornerShape(4.dp)) {
+                                    Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF16A34A)))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("LIVE", color = Color(0xFF16A34A), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                                    }
+                                }
+                            }
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(ships) { ship ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                                    ) {
+                                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.DirectionsBoat, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(ship.name, fontWeight = FontWeight.Bold)
+                                                Text(ship.route, fontSize = 11.sp, color = Color.Gray)
+                                            }
+                                            Surface(
+                                                color = when(ship.status) {
+                                                    "Boarding" -> Color(0xFFDCFCE7)
+                                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                                },
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    ship.status.uppercase(),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = when(ship.status) {
+                                                        "Boarding" -> Color(0xFF16A34A)
+                                                        else -> MaterialTheme.colorScheme.primary
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        if (showAddTrip) {
-            AddTripDialog(
-                onDismiss = { showAddTrip = false },
-                onAdd = { route, dep, type, driver, cap ->
-                    viewModel.addTrip(Trip(generateId(), route, dep, type, driver, cap, cap, "Scheduled"))
-                    showAddTrip = false
+        if (showScanner) {
+            ScannerDialog(onDismiss = { showScanner = false }) { ref ->
+                val b = bookings.find { it.referenceId == ref }
+                if (b != null) {
+                    viewModel.showToast("✅ Valid: ${b.name} (${b.type})")
+                    if (b.status == "Pending") {
+                        viewModel.confirmBooking(b, "Terminal Admin")
+                    }
+                } else {
+                    viewModel.showToast("❌ Invalid Reference ID")
                 }
-            )
+                showScanner = false
+            }
         }
     }
-}
-
-@Composable
-fun AddTripDialog(onDismiss: () -> Unit, onAdd: (String, String, String, String, Int) -> Unit) {
-    var route by remember { mutableStateOf("Mamburao → Abra Port") }
-    var dep by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("Van") }
-    var driver by remember { mutableStateOf("") }
-    var cap by remember { mutableStateOf("14") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Trip") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Simplified route selector
-                OutlinedTextField(value = route, onValueChange = { route = it }, label = { Text("Route") })
-                OutlinedTextField(value = dep, onValueChange = { dep = it }, label = { Text("Dep Time (ISO)") }, placeholder = { Text("2026-05-24T20:00:00Z") })
-                OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (Van/Bus)") })
-                OutlinedTextField(value = driver, onValueChange = { driver = it }, label = { Text("Driver Name") })
-                OutlinedTextField(value = cap, onValueChange = { cap = it }, label = { Text("Capacity") })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onAdd(route, dep, type, driver, cap.toIntOrNull() ?: 14) }) { Text("Add") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }
 
 @Composable
