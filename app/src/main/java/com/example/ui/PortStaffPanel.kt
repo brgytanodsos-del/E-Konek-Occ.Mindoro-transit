@@ -23,8 +23,8 @@ import com.example.data.*
 import com.example.data.model.*
 import com.example.ui.theme.Navy
 import com.example.ui.theme.Orange
+import com.example.ui.components.*
 import com.example.viewmodel.AppViewModel
-
 import com.example.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,64 +44,19 @@ fun PortStaffPanel(
 
     Scaffold(
         topBar = {
-            Column(modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp, vertical = 12.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column {
-                        Text(
-                            "E-KONEK TRANSIT",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            letterSpacing = 1.sp
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "Staff View",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = (-0.5).sp,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            if (isSuperAdmin) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        "ADMIN",
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { showScanner = true }, modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)) {
-                            Icon(Icons.Default.QrCodeScanner, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            modifier = Modifier.size(40.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("JD", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp)
-                            }
-                        }
-                        if (!isSuperAdmin) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { authViewModel.logout() }) {
-                                Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                            }
-                        }
-                    }
-                }
-            }
+            EpicTopBar(
+                title = "E-KONEK TRANSIT",
+                roleName = "Port Staff - Montenegro",
+                isOnline = isOnline,
+                onLogout = { authViewModel.logout() }
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { /* Open new schedule dialog */ },
+                icon = { Icon(Icons.Default.Add, null) },
+                text = { Text("New Schedule") }
+            )
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -134,9 +89,12 @@ fun PortStaffPanel(
             
             items(ships) { ship ->
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    VesselCard(ship, onStatusChange = { appViewModel.updateShipStatus(ship, it) })
+                    EpicShipCard(ship = ship, fare = 450.0) {
+                        appViewModel.updateShipStatus(ship, if (ship.status == "Scheduled") "Boarding" else "Departed")
+                    }
                 }
             }
+
             
             item {
                 Spacer(modifier = Modifier.height(24.dp))

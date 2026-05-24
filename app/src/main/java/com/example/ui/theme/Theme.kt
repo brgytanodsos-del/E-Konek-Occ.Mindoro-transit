@@ -1,61 +1,25 @@
 package com.example.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = PrimarySleek,
-    secondary = SecondarySleek,
-    tertiary = TertiarySleek,
-    background = Color(0xFF1C1B1F),
-    surface = Color(0xFF1C1B1F),
+private val MindoroDarkColorScheme = darkColorScheme(
+    primary = Color(0xFF0A2540),           // Deep Ocean Blue
+    secondary = Color(0xFFFF8C00),         // Vibrant Sunset Orange
+    tertiary = Color(0xFF00D4FF),          // Electric Cyan (waves)
+    background = Color(0xFF05101F),        // Dark Navy Night
+    surface = Color(0xFF0A1F38),
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    outline = OutlineSleek
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = PrimarySleek,
-    secondary = SecondarySleek,
-    tertiary = TertiarySleek,
-    background = BackgroundSleek,
-    surface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = OnBackgroundSleek,
-    onSurface = OnBackgroundSleek,
-    surfaceVariant = SurfaceSleek,
-    onSurfaceVariant = OnSurfaceVariantSleek,
-    outline = OutlineSleek
+    onSecondary = Color.Black
 )
 
 @Composable
-fun MindoroTransitTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
-  content: @Composable () -> Unit,
-) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
-    }
-
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+fun MindoroTransitTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = MindoroDarkColorScheme,
+        typography = MindoroTypography,
+        content = content
+    )
 }
