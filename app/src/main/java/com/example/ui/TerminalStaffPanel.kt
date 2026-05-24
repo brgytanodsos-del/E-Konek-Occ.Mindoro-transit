@@ -33,6 +33,7 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     val gpsIndices by viewModel.gpsIndices.collectAsState()
     
     var selectedTab by remember { mutableStateOf(0) }
+    var showAddTrip by remember { mutableStateOf(false) }
     val terminalBookings = bookings.filter { it.type == "Van" || it.type == "Bus" }
 
     Scaffold(
@@ -130,6 +131,19 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                                 }
                                 Text("ACTIVE TRIPS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
                             }
+                            
+                            item {
+                                Button(
+                                    onClick = { showAddTrip = true },
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Add Trip")
+                                }
+                            }
+
                             items(trips) { trip ->
                                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                                     TripCard(trip, onStatusChange = { viewModel.updateTripStatus(trip, it) })
@@ -161,7 +175,47 @@ fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 }
             }
         }
+
+        if (showAddTrip) {
+            AddTripDialog(
+                onDismiss = { showAddTrip = false },
+                onAdd = { route, dep, type, driver, cap ->
+                    viewModel.addTrip(Trip(generateId(), route, dep, type, driver, cap, cap, "Scheduled"))
+                    showAddTrip = false
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun AddTripDialog(onDismiss: () -> Unit, onAdd: (String, String, String, String, Int) -> Unit) {
+    var route by remember { mutableStateOf("Mamburao → Abra Port") }
+    var dep by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("Van") }
+    var driver by remember { mutableStateOf("") }
+    var cap by remember { mutableStateOf("14") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Trip") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Simplified route selector
+                OutlinedTextField(value = route, onValueChange = { route = it }, label = { Text("Route") })
+                OutlinedTextField(value = dep, onValueChange = { dep = it }, label = { Text("Dep Time (ISO)") }, placeholder = { Text("2026-05-24T20:00:00Z") })
+                OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (Van/Bus)") })
+                OutlinedTextField(value = driver, onValueChange = { driver = it }, label = { Text("Driver Name") })
+                OutlinedTextField(value = cap, onValueChange = { cap = it }, label = { Text("Capacity") })
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onAdd(route, dep, type, driver, cap.toIntOrNull() ?: 14) }) { Text("Add") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +37,19 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     var selectedEntityId by remember { mutableStateOf<String?>(null) }
     
     var countdown by remember { mutableStateOf(30) }
+    var trackingTripId by remember { mutableStateOf<String?>(null) }
+    var showConfirmation by remember { mutableStateOf<Booking?>(null) }
+
+    val gpsIndices by viewModel.gpsIndices.collectAsState()
+
+    if (trackingTripId != null) {
+        val trip = trips.find { it.id == trackingTripId }
+        val route = trip?.route ?: "default"
+        val location = viewModel.getTripLocation(trackingTripId!!, route)
+        TrackRideScreen(trip, location) { trackingTripId = null }
+        return
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000)
@@ -105,8 +119,8 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             item {
                 if (abraWeather?.windSpeed ?: 0.0 > 30.0) {
-                    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.error).padding(8.dp)) {
-                        Text("⚠️ WIND ADVISORY: High winds at Abra Port.", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
+                    Box(modifier = Modifier.fillMaxWidth().background(Color.Red).padding(8.dp)) {
+                        Text("⚠️ WIND ADVISORY: High winds at Abra Port. Schedules may be delayed.", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
                     }
                 }
                 
@@ -114,44 +128,37 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .height(180.dp)
+                        .height(200.dp)
                         .clip(RoundedCornerShape(32.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(Navy)
                 ) {
-                    // Decorative circle as in design
+                    // Decorative patterns
                     Box(
                         modifier = Modifier
-                            .size(120.dp)
-                            .offset(x = 100.dp, y = (-20).dp)
+                            .size(200.dp)
+                            .offset(x = 150.dp, y = (-50).dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                            .background(Color.White.copy(alpha = 0.05f))
                     )
                     
                     Column(
                         modifier = Modifier.fillMaxSize().padding(24.dp),
                         verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.Start
                     ) {
+                        Text("MindoroTransit", color = Orange, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 2.sp)
+                        Text("Live Travel\nCompanion", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black, lineHeight = 36.sp, letterSpacing = (-1).sp)
+                        Spacer(modifier = Modifier.height(16.dp))
                         Surface(
-                            modifier = Modifier.size(56.dp),
-                            shape = CircleShape,
-                            color = Color.White,
-                            shadowElevation = 4.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Surface(
-                            color = Color.White.copy(alpha = 0.8f),
-                            shape = RoundedCornerShape(16.dp)
+                            color = Color.White.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                "Mamburao Central Terminal",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                                "Montenegro Shipping & Mamburao Terminal",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                fontSize = 10.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -220,17 +227,92 @@ fun PassengerPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                         if (ship != null) FerryBookingFields(ship) { name, contact, type ->
                             viewModel.bookFerry(ship, name, contact, type)
                             showBookingForm = null
+                            // We can't easily get the last inserted booking, so mock a confirmation for UI
+                            showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", ship.id, "Ferry", name, contact, type, status = "Pending", timestamp = "")
                         }
                     } else {
                         val trip = trips.find { it.id == selectedEntityId }
                         if (trip != null) VanBookingFields(trip) { name, contact, pickup, seats ->
                             viewModel.bookVanBus(trip, name, contact, pickup, seats)
                             showBookingForm = null
+                            showConfirmation = Booking(generateId(), "REF-${generateId().uppercase()}", trip.id, trip.type, name, contact, "$seats seats", status = "Pending", timestamp = "")
                         }
                     }
                 },
                 confirmButton = {}
             )
+        }
+
+        if (showConfirmation != null) {
+            AlertDialog(
+                onDismissRequest = { showConfirmation = null },
+                confirmButton = {
+                    Button(onClick = { showConfirmation = null }) { Text("Close") }
+                },
+                title = { Text("Booking Submitted!") },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.CheckCircle, null, tint = GreenSync, modifier = Modifier.size(64.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Reference Number", fontSize = 12.sp, color = Color.Gray)
+                        Text(showConfirmation?.referenceId ?: "", fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                        if (showConfirmation?.type != "Ferry") {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { 
+                                trackingTripId = showConfirmation?.entityId
+                                showConfirmation = null
+                            }) {
+                                Icon(Icons.Default.Map, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Track Ride")
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun TrackRideScreen(trip: Trip?, location: List<Double>, onBack: () -> Unit) {
+    var etaSeconds by remember { mutableStateOf(15 * 60) }
+    LaunchedEffect(Unit) {
+        while (etaSeconds > 0) {
+            delay(3000)
+            etaSeconds -= 5
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MapView(center = location, markers = listOf(MapMarker(trip?.id ?: "current", location, "Your Ride: ${trip?.driver}")), modifier = Modifier.fillMaxSize())
+        
+        Column(modifier = Modifier.align(Alignment.TopStart).padding(20.dp)) {
+            IconButton(onClick = onBack, modifier = Modifier.background(Color.White, CircleShape)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+            }
+        }
+
+        Card(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(trip?.route ?: "Route", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Text(trip?.driver ?: "Driver", fontSize = 14.sp, color = Color.Gray)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("ETA", fontSize = 10.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                        val mins = etaSeconds / 60
+                        val secs = etaSeconds % 60
+                        Text("%02d:%02dm".format(mins, secs), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }

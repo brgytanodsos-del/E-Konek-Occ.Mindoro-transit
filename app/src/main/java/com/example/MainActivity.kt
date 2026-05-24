@@ -106,7 +106,7 @@ fun MainContent(viewModel: AppViewModel = viewModel()) {
                                 NavigationBarItem(
                                     selected = adminTab == 3,
                                     onClick = { adminTab = 3 },
-                                    icon = { Icon(Icons.Default.Settings, null) },
+                                    icon = { Icon(Icons.Default.AdminPanelSettings, null) },
                                     label = { Text("Admin", fontSize = 10.sp) },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = MaterialTheme.colorScheme.primary,

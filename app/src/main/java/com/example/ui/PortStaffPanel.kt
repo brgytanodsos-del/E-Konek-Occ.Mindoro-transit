@@ -33,6 +33,9 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
     
     val ferryBookings = bookings.filter { it.type == "Ferry" }
 
+    var showAddVoyage by remember { mutableStateOf(false) }
+    var showAddAnnouncement by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp, vertical = 12.dp)) {
@@ -114,6 +117,29 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                 Text("VESSEL SCHEDULE", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
             }
             
+            item {
+                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { showAddVoyage = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Voyage", fontSize = 12.sp)
+                    }
+                    OutlinedButton(
+                        onClick = { showAddAnnouncement = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Announcement, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Announce", fontSize = 12.sp)
+                    }
+                }
+            }
+            
             items(ships) { ship ->
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     VesselCard(ship, onStatusChange = { viewModel.updateShipStatus(ship, it) })
@@ -130,8 +156,82 @@ fun PortStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
                     BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Port Admin") }, onCancel = { viewModel.cancelBooking(booking) })
                 }
             }
+
+            item { Spacer(modifier = Modifier.height(32.dp)) }
+        }
+
+        if (showAddVoyage) {
+            AddVoyageDialog(
+                onDismiss = { showAddVoyage = false },
+                onAdd = { name, route, dep, type, cap ->
+                    viewModel.addShip(Ship(generateId(), name, route, dep, dep, "Scheduled", cap, cap, type))
+                    showAddVoyage = false
+                }
+            )
+        }
+
+        if (showAddAnnouncement) {
+            AddAnnouncementDialog(
+                onDismiss = { showAddAnnouncement = false },
+                onAdd = { text ->
+                    viewModel.addAnnouncement(text, "Port Admin")
+                    showAddAnnouncement = false
+                }
+            )
         }
     }
+}
+
+@Composable
+fun AddVoyageDialog(onDismiss: () -> Unit, onAdd: (String, String, String, String, Int) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var route by remember { mutableStateOf("Abra Port → Batangas") }
+    var dep by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("RORO") }
+    var cap by remember { mutableStateOf("200") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Voyage") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Ship Name") })
+                OutlinedTextField(value = route, onValueChange = { route = it }, label = { Text("Route") })
+                OutlinedTextField(value = dep, onValueChange = { dep = it }, label = { Text("Dep Time (ISO)") }, placeholder = { Text("2026-05-24T20:00:00Z") })
+                OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (RORO/Ferry)") })
+                OutlinedTextField(value = cap, onValueChange = { cap = it }, label = { Text("Capacity") })
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onAdd(name, route, dep, type, cap.toIntOrNull() ?: 200) }) { Text("Add") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun AddAnnouncementDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Post Announcement") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Message") },
+                modifier = Modifier.fillMaxWidth().height(120.dp)
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onAdd(text) }) { Text("Post") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

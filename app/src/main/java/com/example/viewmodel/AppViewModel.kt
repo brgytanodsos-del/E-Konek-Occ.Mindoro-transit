@@ -337,4 +337,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             ))
         }
     }
+
+    fun getTripLocation(tripId: String, routeStr: String): List<Double> {
+        val route = AppConstants.GPS_ROUTES[routeStr] ?: AppConstants.GPS_ROUTES["default"]!!
+        val index = gpsIndices.value[tripId] ?: 0
+        return route[index % route.size]
+    }
 }
