@@ -14,3 +14,8 @@ fun Double.format(digits: Int = 2): String {
 }
 
 fun generateId(): String = java.util.UUID.randomUUID().toString().substring(0, 9)
+
+fun formatPST(timestamp: Long): String {
+    val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}

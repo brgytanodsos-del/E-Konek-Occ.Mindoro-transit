@@ -45,8 +45,11 @@ data class Booking(
     val status: String,          // Confirmed, Pending, Cancelled
     val timestamp: String,
     val amount: Double = 0.0,
+    val commission: Double = 0.0,
     val paymentMethod: String = "Cash", // GCash, Cash, Maya
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    val syncedAt: Long? = null,
+    val lastUpdated: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "transactions")

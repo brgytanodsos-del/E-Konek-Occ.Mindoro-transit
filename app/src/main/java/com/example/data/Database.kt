@@ -40,6 +40,15 @@ interface AppDao {
     @Update
     suspend fun updateBooking(booking: Booking)
 
+    @Query("SELECT * FROM bookings WHERE id = :id")
+    suspend fun getBookingById(id: String): Booking?
+
+    @Query("SELECT * FROM ships WHERE id = :id")
+    suspend fun getShipById(id: String): Ship?
+
+    @Query("SELECT * FROM transactions WHERE bookingId = :bookingId")
+    suspend fun getTransactionByBookingId(bookingId: String): Transaction?
+
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 
