@@ -49,13 +49,13 @@ fun MainContent(viewModel: AppViewModel = viewModel()) {
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             when {
                 !isAuthenticated -> {
-                    if (selectedRoleForPin != null) {
+                    selectedRoleForPin?.let { role ->
                         PinEntryScreen(
-                            role = selectedRoleForPin!!,
-                            onPinEntered = { viewModel.login(selectedRoleForPin!!, it) },
+                            role = role,
+                            onPinEntered = { viewModel.login(role, it) },
                             onBack = { selectedRoleForPin = null }
                         )
-                    } else {
+                    } ?: run {
                         LoginScreen(onRoleSelected = { role ->
                             if (role == "passenger") {
                                 viewModel.login("passenger", null)

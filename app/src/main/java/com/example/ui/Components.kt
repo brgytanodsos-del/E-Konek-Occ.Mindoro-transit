@@ -128,16 +128,18 @@ fun MapView(
     markers: List<MapMarker>,
     modifier: Modifier = Modifier
 ) {
+    val html = remember(center, markers) { getLeafletHtml(center, markers) }
+    
     AndroidView(
         factory = { context ->
             WebView(context).apply {
                 webViewClient = WebViewClient()
                 settings.javaScriptEnabled = true
-                loadData(getLeafletHtml(center, markers), "text/html", "UTF-8")
+                loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
             }
         },
         update = { webView ->
-            webView.loadData(getLeafletHtml(center, markers), "text/html", "UTF-8")
+            webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
         },
         modifier = modifier
     )
