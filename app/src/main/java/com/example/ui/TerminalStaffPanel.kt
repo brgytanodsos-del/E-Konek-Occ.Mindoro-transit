@@ -1,0 +1,217 @@
+package com.example.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.data.*
+import com.example.ui.theme.Navy
+import com.example.ui.theme.Orange
+import com.example.viewmodel.AppViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TerminalStaffPanel(viewModel: AppViewModel, isSuperAdmin: Boolean = false) {
+    val trips by viewModel.trips.collectAsState()
+    val bookings by viewModel.bookings.collectAsState()
+    val mamburaoWeather by viewModel.mamburaoWeather.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
+    val gpsIndices by viewModel.gpsIndices.collectAsState()
+    
+    var selectedTab by remember { mutableStateOf(0) }
+    val terminalBookings = bookings.filter { it.type == "Van" || it.type == "Bus" }
+
+    Scaffold(
+        topBar = {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text(
+                            "E-KONEK TRANSIT",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Terminal View",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = (-0.5).sp,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            if (isSuperAdmin) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        "ADMIN",
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("JD", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp)
+                            }
+                        }
+                        if (!isSuperAdmin) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(onClick = { viewModel.logout() }) {
+                                Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {}
+            ) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Trips", fontSize = 12.sp, fontWeight = if(selectedTab==0) FontWeight.Bold else FontWeight.Normal) })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Bookings", fontSize = 12.sp, fontWeight = if(selectedTab==1) FontWeight.Bold else FontWeight.Normal) })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Live Map", fontSize = 12.sp, fontWeight = if(selectedTab==2) FontWeight.Bold else FontWeight.Normal) })
+            }
+            
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    0 -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            item {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Box(modifier = Modifier.weight(1.3f)) {
+                                        WeatherWidget(mamburaoWeather, "Mamburao Term.", isOnline)
+                                    }
+                                    Card(
+                                        modifier = Modifier.weight(1f).height(110.dp),
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.Start) {
+                                            Text("Active Trips", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text("${trips.size}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                            Text("Today", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f))
+                                        }
+                                    }
+                                }
+                                Text("ACTIVE TRIPS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+                            }
+                            items(trips) { trip ->
+                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    TripCard(trip, onStatusChange = { viewModel.updateTripStatus(trip, it) })
+                                }
+                            }
+                        }
+                    }
+                    1 -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            item {
+                                Text("PENDING BOOKINGS", fontWeight = FontWeight.Black, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+                            }
+                            items(terminalBookings.filter { it.status == "Pending" }) { booking ->
+                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    BookingRow(booking, onConfirm = { viewModel.confirmBooking(booking, "Terminal Admin") }, onCancel = { viewModel.cancelBooking(booking) })
+                                }
+                            }
+                        }
+                    }
+                    2 -> {
+                        val activeTrips = trips.filter { it.status == "Boarding" || it.status == "Departed" }
+                        val markers = activeTrips.map { trip ->
+                            val route = AppConstants.GPS_ROUTES[trip.route] ?: AppConstants.GPS_ROUTES["default"]!!
+                            val index = gpsIndices[trip.id] ?: 0
+                            MapMarker(trip.id, route[index], "${trip.driver} (${trip.type}) - ${trip.route}")
+                        }
+                        MapView(center = listOf(13.2167, 120.5833), markers = markers, modifier = Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TripCard(trip: Trip, onStatusChange: (String) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(if (trip.type == "Van") Icons.Default.AirportShuttle else Icons.Default.DirectionsBus, null, tint = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(trip.route, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
+                    Text(trip.driver, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                StatusDropdown(trip.status, onStatusChange)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Event, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = " Dep: ${formatPST(trip.depTime)}",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Surface(
+                    color = if (trip.available > 0) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        "${trip.available}/${trip.capacity} SEATS",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (trip.available > 0) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+    }
+}

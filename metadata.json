@@ -1,0 +1,6 @@
+{
+  "name": "MindoroTransit",
+  "description": "Port & Terminal Management System for Occidental Mindoro with role-based access and offline tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
